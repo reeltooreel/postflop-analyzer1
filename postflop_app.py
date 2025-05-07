@@ -1,4 +1,3 @@
-
 import streamlit as st
 from itertools import combinations
 from collections import Counter
@@ -7,9 +6,11 @@ import random
 
 RANK_ORDER = '23456789TJQKA'
 
+
 def parse_board(input_str):
     cards = input_str.upper().split()
     return [c for c in cards if c in RANK_ORDER][:5]
+
 
 def hand_strength(hand, board):
     all_cards = hand + board
@@ -20,32 +21,42 @@ def hand_strength(hand, board):
     for i in range(len(RANK_ORDER) - 4):
         seq = RANK_ORDER[i:i+5]
         if all(rank in all_cards for rank in seq):
-            return (6, seq[-1])  # Stege
+            return (6, RANK_ORDER.index(seq[-1]))  # Stege
+
+    for rank, count in counts.items():
+        if count == 4:
+            return (7, RANK_ORDER.index(rank))  # Fyrtal
 
     for rank, count in counts.items():
         if count == 3:
-            return (5, rank)
+            return (5, RANK_ORDER.index(rank))  # Triss
 
-    if len([r for r in counts if counts[r] == 2]) >= 2:
-        pairs = sorted([r for r in counts if counts[r] == 2], key=lambda x: RANK_ORDER.index(x), reverse=True)
-        return (4, pairs[0], pairs[1])
+    pairs = [r for r in counts if counts[r] == 2]
+    if len(pairs) >= 2:
+        sorted_pairs = sorted([RANK_ORDER.index(r) for r in pairs], reverse=True)
+        return (4, *sorted_pairs[:2])  # Tvåpar
 
-    for rank, count in counts.items():
-        if count == 2:
-            return (3, rank)
+    if len(pairs) == 1:
+        return (3, RANK_ORDER.index(pairs[0]))  # Ett par
 
-    return (2, ordered[0])
+    return (2, RANK_ORDER.index(ordered[0]))  # Högt kort
+
 
 def interpret_strength(score):
-    if score[0] == 6:
-        return f"Stege till {score[1]}"
-    if score[0] == 5:
-        return f"Triss i {score[1]}"
-    if score[0] == 4:
-        return f"Tvåpar {score[1]} och {score[2]}"
-    if score[0] == 3:
-        return f"Ett par i {score[1]}"
-    return f"Högt kort {score[1]}"
+    hand_type = score[0]
+    if hand_type == 7:
+        return f"Fyrtal i {RANK_ORDER[score[1]]}"
+    elif hand_type == 6:
+        return f"Stege till {RANK_ORDER[score[1]]}"
+    elif hand_type == 5:
+        return f"Triss i {RANK_ORDER[score[1]]}"
+    elif hand_type == 4:
+        return f"Tvåpar {RANK_ORDER[score[1]]} och {RANK_ORDER[score[2]]}"
+    elif hand_type == 3:
+        return f"Par i {RANK_ORDER[score[1]]}"
+    else:
+        return f"Högt kort {RANK_ORDER[score[1]]}"
+
 
 def possible_hands(board):
     all_ranks = list(RANK_ORDER)
@@ -60,13 +71,15 @@ def possible_hands(board):
             combos.append((r, r))
     return combos
 
+
 def rank_hands_by_strength(board):
     hands = possible_hands(board)
     scored = [(hand_strength(list(h), board), h) for h in hands]
     scored.sort(reverse=True)
-    return scored[:20]
+    return scored
 
-def simulate_equity(hand, board_ranks, iters=500):
+
+def simulate_equity(hand, board_ranks, iters=300):
     ranks = RANK_ORDER
     deck = [r+s for r in ranks for s in "shdc"]
     used = set(r+s for r in board_ranks for s in "shdc") | set(r+s for r in hand for s in "shdc")
@@ -92,14 +105,16 @@ def simulate_equity(hand, board_ranks, iters=500):
             wins += 0.5
     return wins / iters
 
+
 def rank_hands_by_equity(board_ranks):
     hands = possible_hands(board_ranks)
     results = []
     for h in hands:
-        eq = simulate_equity(h, board_ranks, iters=500)
+        eq = simulate_equity(h, board_ranks, iters=300)
         results.append((eq, h))
     results.sort(reverse=True)
-    return results[:20]
+    return results
+
 
 # --- Streamlit UI ---
 
@@ -122,5 +137,5 @@ if board_input:
                     st.write(f"{i}. {hand[0]}{hand[1]} — {interpret_strength(score)}")
             else:
                 top_hands = rank_hands_by_equity(board)
-                for i, (eq, hand) in enumerate(top_hands, 1):
+                for i, (eq, hand) in enumerate(top_hands[:20], 1):
                     st.write(f"{i}. {hand[0]}{hand[1]} — {eq*100:.1f}% equity")
