@@ -27,9 +27,19 @@ def hand_strength(hand, board):
         if count == 4:
             return (7, RANK_ORDER.index(rank))  # Fyrtal
 
+    three = None
+    pair = None
     for rank, count in counts.items():
         if count == 3:
-            return (5, RANK_ORDER.index(rank))  # Triss
+            three = rank
+        elif count == 2:
+            if not pair or RANK_ORDER.index(rank) > RANK_ORDER.index(pair):
+                pair = rank
+    if three and pair:
+        return (8, RANK_ORDER.index(three), RANK_ORDER.index(pair))  # Kåk
+
+    if three:
+        return (5, RANK_ORDER.index(three))  # Triss
 
     pairs = [r for r in counts if counts[r] == 2]
     if len(pairs) >= 2:
@@ -44,7 +54,9 @@ def hand_strength(hand, board):
 
 def interpret_strength(score):
     hand_type = score[0]
-    if hand_type == 7:
+    if hand_type == 8:
+        return f"Kåk {RANK_ORDER[score[1]]} över {RANK_ORDER[score[2]]}"
+    elif hand_type == 7:
         return f"Fyrtal i {RANK_ORDER[score[1]]}"
     elif hand_type == 6:
         return f"Stege till {RANK_ORDER[score[1]]}"
@@ -133,8 +145,29 @@ if board_input:
         with st.spinner("Analyserar..."):
             if mode == "Handstyrka":
                 top_hands = rank_hands_by_strength(board)
-                for i, (score, hand) in enumerate(top_hands, 1):
-                    st.write(f"{i}. {hand[0]}{hand[1]} — {interpret_strength(score)}")
+
+                tvåpar_col, triss_col, stege_col, kåk_col = st.columns(4)
+                with tvåpar_col:
+                    st.subheader("Tvåpar")
+                    for score, hand in top_hands:
+                        if score[0] == 4:
+                            st.write(f"{hand[0]}{hand[1]} — {interpret_strength(score)}")
+                with triss_col:
+                    st.subheader("Triss")
+                    for score, hand in top_hands:
+                        if score[0] == 5:
+                            st.write(f"{hand[0]}{hand[1]} — {interpret_strength(score)}")
+                with stege_col:
+                    st.subheader("Stegar och drag")
+                    for score, hand in top_hands:
+                        if score[0] == 6:
+                            st.write(f"{hand[0]}{hand[1]} — {interpret_strength(score)}")
+                with kåk_col:
+                    st.subheader("Färdiga kåkar")
+                    for score, hand in top_hands:
+                        if score[0] == 8:
+                            st.write(f"{hand[0]}{hand[1]} — {interpret_strength(score)}")
+
             else:
                 top_hands = rank_hands_by_equity(board)
                 for i, (eq, hand) in enumerate(top_hands[:20], 1):
