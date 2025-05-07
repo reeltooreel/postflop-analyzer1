@@ -156,7 +156,9 @@ if board_input:
                     st.subheader("Triss")
                     for score, hand in top_hands:
                         if score[0] == 5:
-                            st.write(f"{hand[0]}{hand[1]} — {interpret_strength(score)}")
+                            combined = hand + board
+                            if combined.count(hand[0]) >= 3 or combined.count(hand[1]) >= 3:
+                                st.write(f"{hand[0]}{hand[1]} — {interpret_strength(score)}")
                 with stege_col:
                     st.subheader("Stegar och drag")
                     for score, hand in top_hands:
